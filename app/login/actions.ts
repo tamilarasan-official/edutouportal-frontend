@@ -23,6 +23,13 @@ interface AuthResponse {
 /**
  * Forward the API's session cookies onto the outgoing response.
  * Next's cookies() store is writable inside a Server Action.
+ *
+ * Every attribute the API sent must be carried across, and `Domain` above all.
+ * The API issues the session cookie with `Domain=.edutou.in` so that the
+ * browser will also send it to api.edutou.in. Re-setting the cookie without
+ * that attribute makes it host-only for the frontend domain: login appears to
+ * succeed, then every direct browser call to the API comes back
+ * "Not authenticated", because the cookie is never attached.
  */
 async function persistSessionCookies(response: Response): Promise<void> {
   const store = await cookies()
@@ -37,14 +44,27 @@ async function persistSessionCookies(response: Response): Promise<void> {
     const value = decodeURIComponent(pair.slice(separator + 1).trim())
 
     const lower = attributes.map((a) => a.trim().toLowerCase())
-    const maxAgeAttr = lower.find((a) => a.startsWith('max-age='))
+
+    const attributeValue = (key: string): string | undefined => {
+      const found = lower.find((a) => a.startsWith(`${key}=`))
+      return found?.slice(key.length + 1).trim() || undefined
+    }
+
+    const maxAge = attributeValue('max-age')
+    const domain = attributeValue('domain')
+    const cookiePath = attributeValue('path')
+    const sameSite = attributeValue('samesite')
 
     store.set(name, value, {
       httpOnly: lower.includes('httponly'),
       secure: lower.includes('secure'),
-      sameSite: 'lax',
-      path: '/',
-      ...(maxAgeAttr ? { maxAge: Number(maxAgeAttr.split('=')[1]) } : {}),
+      sameSite:
+        sameSite === 'strict' ? 'strict' : sameSite === 'none' ? 'none' : 'lax',
+      path: cookiePath ?? '/',
+      // Preserved so the cookie is valid across subdomains. Omitted when the
+      // API did not send one, which keeps it host-only for single-host setups.
+      ...(domain ? { domain } : {}),
+      ...(maxAge ? { maxAge: Number(maxAge) } : {}),
     })
   }
 }
