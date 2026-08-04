@@ -468,8 +468,16 @@ export default function ResourcesPage() {
 
               {/* PDF Viewer */}
               <div className="flex-1 bg-white rounded-b-2xl overflow-hidden shadow-2xl">
+                {/* Guard the src: a resource whose upload failed has a null
+                    file_url, and interpolating that frames a garbage URL --
+                    which is what produced a 404 plus an X-Frame-Options error
+                    instead of a useful message. */}
                 <iframe
-                  src={`${viewingResource.file_url}#toolbar=0&navpanes=0&scrollbar=1`}
+                  src={
+                    viewingResource.file_url
+                      ? `${viewingResource.file_url}#toolbar=0&navpanes=0&scrollbar=1`
+                      : 'about:blank'
+                  }
                   className="w-full h-full"
                   title={viewingResource.file_name}
                   style={{
