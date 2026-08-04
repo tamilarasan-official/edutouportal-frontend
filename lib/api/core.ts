@@ -75,13 +75,22 @@ export interface Fetcher {
 /**
  * Default transport. `credentials: 'include'` is what carries the httpOnly
  * session cookie; without it every request would be anonymous.
+ *
+ * A FormData body must NOT carry a content-type header: only the browser can
+ * generate the `multipart/form-data; boundary=...` value, and it only does so
+ * when the header is absent. Defaulting to application/json and letting callers
+ * "clear" it with `headers: {}` did not work -- spreading an empty object
+ * removes nothing, so uploads went out labelled as JSON and the server's JSON
+ * body parser threw on the multipart payload.
  */
 export function browserFetcher(path: string, init: RequestInit = {}): Promise<Response> {
+  const isFormData = typeof FormData !== 'undefined' && init.body instanceof FormData
+
   return fetch(`${API_URL}${path}`, {
     ...init,
     credentials: 'include',
     headers: {
-      'content-type': 'application/json',
+      ...(isFormData ? {} : { 'content-type': 'application/json' }),
       ...(init.headers ?? {}),
     },
   })
@@ -345,10 +354,11 @@ class StorageBucket {
       }
 
       // Let the browser set the multipart boundary.
+      // No headers at all: browserFetcher detects the FormData body and omits
+      // content-type so the browser can set the multipart boundary itself.
       const response = await this.fetcher(`/api/storage/${this.bucket}`, {
         method: 'POST',
         body: form,
-        headers: {},
       })
 
       const payload = (await response.json().catch(() => ({}))) as {
