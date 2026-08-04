@@ -25,8 +25,33 @@ export interface Result<T> {
   status: number
 }
 
-export const API_URL =
-  (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_URL) || 'http://localhost:4000'
+/**
+ * Normalise the configured API origin.
+ *
+ * `fetch()` requires an absolute URL, so a value like `api.edutou.in` — which
+ * is what most people type when a form asks for a domain — fails with
+ * "Failed to parse URL from api.edutou.in/auth/login" rather than anything
+ * that points at the real problem. Two forgiving rules:
+ *
+ *   - no scheme  -> assume https (http only for localhost / 127.0.0.1, which
+ *                   will not have a certificate)
+ *   - trailing / -> stripped, because every call site builds `${API_URL}/path`
+ *                   and `//path` breaks route matching on the server
+ */
+function normaliseApiUrl(raw: string | undefined): string {
+  const value = raw?.trim()
+  if (!value) return 'http://localhost:4000'
+
+  const withScheme = /^https?:\/\//i.test(value)
+    ? value
+    : `${/^(localhost|127\.0\.0\.1)(:\d+)?$/i.test(value) ? 'http' : 'https'}://${value}`
+
+  return withScheme.replace(/\/+$/, '')
+}
+
+export const API_URL = normaliseApiUrl(
+  typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_API_URL : undefined
+)
 
 type FilterOp = 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte' | 'like' | 'ilike' | 'is' | 'in'
 
