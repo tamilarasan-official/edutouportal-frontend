@@ -57,51 +57,97 @@ function destinationFor(role: string | undefined): string {
   return '/'
 }
 
-export async function login(formData: FormData) {
+export interface AuthActionResult {
+  error?: string
+}
+
+/**
+ * Turn a failed fetch into a message that names the actual problem.
+ *
+ * A Server Action that throws surfaces in production as a bare 500 with the
+ * message redacted -- so "the API is unreachable" and "wrong password" looked
+ * identical from the browser. These actions now RETURN errors instead.
+ */
+function describeNetworkFailure(err: unknown): string {
+  const detail = err instanceof Error ? err.message : String(err)
+
+  if (!process.env.NEXT_PUBLIC_API_URL) {
+    return (
+      'The server is not configured: NEXT_PUBLIC_API_URL is not set, so the app ' +
+      'is trying to reach the API at http://localhost:4000. Set it as both a ' +
+      'build argument and an environment variable, then rebuild.'
+    )
+  }
+
+  return `Cannot reach the API at ${API_URL}. (${detail})`
+}
+
+export async function login(formData: FormData): Promise<AuthActionResult> {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
 
-  const response = await fetch(`${API_URL}/auth/login`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-    cache: 'no-store',
-  })
+  let destination: string
 
-  const payload = (await response.json().catch(() => ({}))) as AuthResponse
+  try {
+    const response = await fetch(`${API_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+      cache: 'no-store',
+    })
 
-  if (!response.ok || !payload.user) {
-    throw new Error(payload.error?.message ?? 'Invalid login credentials')
+    const payload = (await response.json().catch(() => ({}))) as AuthResponse
+
+    if (!response.ok || !payload.user) {
+      return { error: payload.error?.message ?? 'Invalid login credentials' }
+    }
+
+    await persistSessionCookies(response)
+    destination = destinationFor(payload.user.role)
+  } catch (err) {
+    console.error('[login] request to API failed:', err)
+    return { error: describeNetworkFailure(err) }
   }
 
-  await persistSessionCookies(response)
   revalidatePath('/', 'layout')
 
-  // redirect() throws internally, so it must sit outside any try/catch.
-  redirect(destinationFor(payload.user.role))
+  // redirect() works by throwing NEXT_REDIRECT, so it must sit OUTSIDE the
+  // try/catch above -- otherwise the catch would swallow the redirect and the
+  // user would sit on the login page after a successful sign-in.
+  redirect(destination)
 }
 
-export async function signup(formData: FormData) {
+export async function signup(formData: FormData): Promise<AuthActionResult> {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
   const fullName = formData.get('name') as string
 
-  const response = await fetch(`${API_URL}/auth/signup`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ email, password, full_name: fullName }),
-    cache: 'no-store',
-  })
+  let destination: string
 
-  const payload = (await response.json().catch(() => ({}))) as AuthResponse
+  try {
+    const response = await fetch(`${API_URL}/auth/signup`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email, password, full_name: fullName }),
+      cache: 'no-store',
+    })
 
-  if (!response.ok || !payload.user) {
-    throw new Error(payload.error?.message ?? 'Failed to create user')
+    const payload = (await response.json().catch(() => ({}))) as AuthResponse
+
+    if (!response.ok || !payload.user) {
+      return { error: payload.error?.message ?? 'Failed to create user' }
+    }
+
+    await persistSessionCookies(response)
+    // New accounts are always students; the database trigger sets the role.
+    destination = destinationFor(payload.user.role)
+  } catch (err) {
+    console.error('[signup] request to API failed:', err)
+    return { error: describeNetworkFailure(err) }
   }
 
-  await persistSessionCookies(response)
   revalidatePath('/', 'layout')
 
-  // New accounts are always students; the trigger sets the role.
-  redirect(destinationFor(payload.user.role))
+  // Outside the try/catch -- see the note in login().
+  redirect(destination)
 }

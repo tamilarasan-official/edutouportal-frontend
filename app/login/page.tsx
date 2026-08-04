@@ -86,7 +86,16 @@ export default function LoginPage() {
 
     try {
       if (currentView === "login") {
-        await login(formData)
+        // The action RETURNS errors rather than throwing: a Server Action that
+        // throws surfaces in production as an opaque 500 with the message
+        // redacted, so a wrong password and an unreachable API looked the same.
+        // On success it redirects, so nothing after this line runs.
+        const result = await login(formData)
+        if (result?.error) {
+          setError(result.error)
+          setLoading(false)
+          return
+        }
       } else if (currentView === "register") {
         const password = formData.get('password') as string
         const confirmPassword = formData.get('confirmPassword') as string
@@ -97,7 +106,12 @@ export default function LoginPage() {
           return
         }
 
-        await signup(formData)
+        const result = await signup(formData)
+        if (result?.error) {
+          setError(result.error)
+          setLoading(false)
+          return
+        }
       } else if (currentView === "forgot") {
         // Handle forgot password
         const email = formData.get('email') as string
