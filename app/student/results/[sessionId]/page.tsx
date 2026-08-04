@@ -48,7 +48,7 @@ export default function StudentResultsPage() {
         .select('*')
         .eq('session_id', sessionId)
         .eq('user_id', user.id)
-        .single()
+        .maybeSingle()
 
       // Load all participants for ranking
       const { data: allParticipants } = await supabase

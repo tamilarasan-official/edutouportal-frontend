@@ -98,7 +98,7 @@ export function Header({ sidebarOpen, setSidebarOpen, setMobileMenuOpen }: {
         .select('mentor_id')
         .eq('student_id', user.id)
         .eq('status', 'active')
-        .single()
+        .maybeSingle()
 
       const mentorId = assignment?.mentor_id
 

@@ -88,7 +88,7 @@ export default function HackathonPage() {
         .from('hackathon_team_members')
         .select('team_id')
         .eq('user_id', user.id)
-        .single()
+        .maybeSingle()
 
       if (!membership) {
         setLoading(false)
@@ -177,7 +177,7 @@ export default function HackathonPage() {
         .from('hackathon_team_members')
         .select('id')
         .eq('user_id', currentUserId)
-        .single()
+        .maybeSingle()
 
       if (existingMembership) {
         toast({
@@ -292,7 +292,7 @@ export default function HackathonPage() {
         .from('hackathon_team_members')
         .select('id')
         .eq('user_id', currentUserId)
-        .single()
+        .maybeSingle()
 
       if (existingMembership) {
         toast({
