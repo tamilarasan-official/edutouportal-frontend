@@ -26,7 +26,8 @@ import {
   Bell,
   Code2,
   MessageCircle,
-  ClipboardCheck
+  ClipboardCheck,
+  Globe,
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -107,6 +108,12 @@ const adminNavigationSections: NavigationSection[] = [
       { title: "Discussion", icon: <MessagesSquare className="h-5 w-5" />, url: "/discussion" },
       { title: "Notifications", icon: <Bell className="h-5 w-5" />, url: "/admin/managenotifications" },
       { title: "Manage Feedback", icon: <MessageCircle className="h-5 w-5" />, url: "/admin/managefeedback" },
+    ]
+  },
+  {
+    title: "Marketing",
+    items: [
+      { title: "Learn Page", icon: <Globe className="h-5 w-5" />, url: "/admin/learnpage" },
     ]
   },
 ]
