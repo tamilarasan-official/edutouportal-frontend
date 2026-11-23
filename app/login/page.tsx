@@ -204,7 +204,7 @@ export default function LoginPage() {
               alt="Edutou Skill Academy Logo"
               className="h-12 w-auto mr-3 rounded-lg shadow-lg"
             />
-            <h1 className="text-xl font-bold text-white">Edutou Skill Academy X Apollo Engineering College</h1>
+            <h1 className="text-xl font-bold text-white">Edutou Skill Academy</h1>
           </div>
 
           <div className="flex-1 flex flex-col justify-center">
